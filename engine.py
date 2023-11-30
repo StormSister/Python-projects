@@ -1,5 +1,7 @@
 
 import random
+from state import board_history
+
 
 def choose_level():
 
@@ -37,26 +39,28 @@ elements = {
         }
     },
     "Wall": {
-        "symbol": "🏔️",
+        "symbol": "🏔",
         "type": "Obstacle",
         "passable": False
     },
-    "Swamp": {
-        "symbol": "🌫️",
+    "Volcano": {
+        "symbol": "🌋",
         "type": "Terrain",
         "passable": True,
         "effect": {
             "type": "health_reduction",
-            "amount": 5
+            "amount": -5
         }
     },
     "Monster": {
         "symbol": "👹",
         "type": "Enemy",
-        "life": 50,
-        "attack": 15,
+        "passable": True,
         "effect": {
-            "type": "fight_with_monster"
+            "life": 50,
+            "attack": 15,
+            "type": "fight_with_monster",
+            "bonus": ["Sword", "Armor", "Health Potion"]
         }
     },
     "Door": {
@@ -66,19 +70,20 @@ elements = {
         "effect": {
             "type": "teleport"
         }
-    }
+    },
+    "Fountain": {
+        "symbol": "⛲",
+        "type": "Terrain",
+        "passable": True,
+        "effect": {
+            "type": "health_reduction",
+            "amount": 15
+        }
+    },
 }
 
 
-def create_board(height, width, obstacles):
-    total_cells = height * width
-    max_elements = total_cells * obstacles
-
-    board = [
-        [elements["Grass"]["symbol"] if (0 < i < height - 1 and j > 0 and j < width - 1) else elements["Wall"]["symbol"] for j in range(width)]
-        for i in range(height)
-    ]
-
+def placing_teleports(height, width, board):
     doors_positions = [
         (0, random.randint(1, width - 2)),
         (height - 1, random.randint(1, width - 2)),
@@ -89,6 +94,10 @@ def create_board(height, width, obstacles):
     for row, col in doors_positions:
         board[row][col] = elements["Door"]["symbol"]
 
+
+def placing_elements(height, width, obstacles, board):
+    total_cells = height * width
+    max_elements = total_cells * obstacles
     elements_to_place = [element for element in elements if element not in ["Door"]]
     placed_elements = 0
 
@@ -101,19 +110,23 @@ def create_board(height, width, obstacles):
             board[rand_row][rand_col] = elements[element]["symbol"]
             placed_elements += 1
 
+
+def create_board(height, width, obstacles):
+
+    board = [
+        [elements["Grass"]["symbol"] if (0 < i < height - 1 and j > 0 and j < width - 1) else elements["Wall"]["symbol"] for j in range(width)]
+        for i in range(height)
+    ]
+    placing_teleports(height, width, board)
+    placing_elements(height, width, obstacles, board)
+
     return board
-
-
-def display_board(board):
-    for row in board:
-        row_str = ''.join(row)
-        print(row_str)
 
 
 def create_player(width, height):
     player = {"row": random.randint(1, height - 2),
               "col": random.randint(1, width - 2),
-              "symbol": '🧙🏻',
+              "symbol": '🧙‍',
               "life": 100,
               "attack": 20,
               "inventory": {},
@@ -127,48 +140,17 @@ def put_player_on_board(board, player):
 
     return board
 
-def put_player_on_new_board(width, height, player, board):
-    new_row = random.randint(1, height - 2)
-    new_col = random.randint(1, width - 2)
-    player['row'], player['col'] = new_row, new_col
-    board[new_row][new_col] = player['symbol']
-
-    return board
-
 
 def apply_teleport_effect(player):
+
     width, height, obstacles = choose_level()
     print(width, height, obstacles)
     new_board = create_board(width, height, obstacles)
+    board_history.append(new_board)
     player["row"] = random.randint(1, height - 2)
     player["col"] = random.randint(1, width - 2)
     put_player_on_board(new_board, player)
-    display_board(new_board)
-    return new_board
-
-
-
-def apply_player_effect(player, cell_effect):
-    if cell_effect:
-        if isinstance(cell_effect, dict):
-            if cell_effect['type'] == "add_to_inventory":
-                apply_inventory_effect(player, cell_effect)
-
-            elif cell_effect['type'] == "health_reduction":
-                apply_health_reduction(player, cell_effect)
-
-            elif cell_effect['type'] == "teleport":
-                new_board = apply_teleport_effect(player)
-                return new_board
-
-            elif cell_effect == "fight_with_monster":
-
-                pass
-
-            else:
-                print("Unknown effect")
-    else:
-        print("No effect on this terrain")
+    return board_history
 
 
 def apply_health_reduction(player, effect):
@@ -176,18 +158,10 @@ def apply_health_reduction(player, effect):
     if effect['type'] == "health_reduction":
         amount = effect.get('amount')
         if amount:
-            player['life'] -= amount
-            print(f"You lost {amount} health!")
+            player['life'] += amount
+            print(f"You gather {amount} health!")
             if player['life'] <= 0:
                 print("Game Over - You lost all your health!")
-                is_running = False
-
-
-def apply_inventory_effect(player, effect):
-    if effect['type'] == "add_to_inventory":
-        bonus = effect.get('bonus')
-        if bonus:
-            add_to_inventory(player, bonus)
 
 
 def add_to_inventory(player, bonus):
@@ -199,17 +173,87 @@ def add_to_inventory(player, bonus):
     print("Added bonus to inventory:", bonus)
 
 
+def apply_inventory_effect(player, effect):
+    if effect['type'] == "add_to_inventory":
+        bonus = effect.get('bonus')
+        if bonus:
+            add_to_inventory(player, bonus)
+
+
+def add_random_bonus(player):
+    available_bonuses = {
+        "Sword": 1,
+        "Armor": 1,
+        "Health Potion": 1,
+        "Gold": 5
+    }
+    selected_bonus = random.choice(list(available_bonuses.keys()))
+    bonus = {selected_bonus: available_bonuses[selected_bonus]}
+    add_to_inventory(player, bonus)
+
+
+def add_points(player, points_to_add):
+    player["points"] += points_to_add
+
+
+def fight_with_monster(player, effect):
+    print("You encountered a monster!")
+    if effect['type'] == "fight_with_monster":
+        monster_life = effect.get('life')
+
+        while player["life"] > 0 and monster_life > 0:
+
+            player_attack = player["attack"]
+            monster_life -= player_attack
+            print(f"You dealt {player_attack} damage to the monster. Monster's remaining life: {monster_life}")
+
+            if monster_life <= 0:
+                print("You defeated the monster!")
+                add_points(player, 5)
+                break
+
+            monster_attack = effect.get('attack')
+            player["life"] -= monster_attack
+            print(f"The monster dealt {monster_attack} damage to you. Your remaining life: {player['life']}")
+
+            if player["life"] <= 0:
+                print("You were defeated by the monster.")
+                break
+
+
+def apply_player_effect(player, cell_effect):
+
+    if cell_effect:
+        if isinstance(cell_effect, dict):
+            if cell_effect['type'] == "add_to_inventory":
+                apply_inventory_effect(player, cell_effect)
+
+            elif cell_effect['type'] == "health_reduction":
+                apply_health_reduction(player, cell_effect)
+
+            elif cell_effect['type'] == "teleport":
+                apply_teleport_effect(player)
+
+            elif cell_effect['type'] == "fight_with_monster":
+                fight_with_monster(player, cell_effect)
+                add_random_bonus(player)
+            else:
+                print("Unknown effect")
+    else:
+        print("No effect on this terrain")
+
+
 def move_direction(direction, row, col):
     new_row, new_col = row, col
 
     if direction == 'W':
-        new_row -= 1  # Góra
+        new_row -= 1
     elif direction == 'S':
-        new_row += 1  # Dół
+        new_row += 1
     elif direction == 'A':
-        new_col -= 1  # Lewo
+        new_col -= 1
     elif direction == 'D':
-        new_col += 1  # Prawo
+        new_col += 1
 
     return new_row, new_col
 
@@ -225,7 +269,6 @@ def key_for_symbol(board, new_row, new_col):
 
 def move_player(board, player, direction):
     row, col = player['row'], player['col']
-    #new_row, new_col = row, col
     new_row, new_col = move_direction(direction, row, col)
 
     if check_position(board, new_row, new_col) and is_passable(board, {'row': new_row, 'col': new_col}):
@@ -239,13 +282,7 @@ def move_player(board, player, direction):
             if "effect" in elements[current_cell]:
                 cell_effect = elements[current_cell].get('effect')
                 print(cell_effect)
-                if cell_effect == "teleport":
-                    board = apply_teleport_effect(player)
                 apply_player_effect(player, cell_effect)
-                # if cell_effect == "teleport":
-                #      board = apply_teleport_effect(player)
-
-
 
     return board
 
@@ -271,15 +308,6 @@ def is_passable(board, player):
     return False
 
 
-def display_inventory(player):
-    print("Player Inventory:")
-    if not player["inventory"]:
-        print("Inventory is empty.")
-    else:
-        for item, quantity in player["inventory"].items():
-            print(f"{item}: {quantity}")
 
 
-def display_health_and_points(player):
-    print(f"Health: {player['life']}")
-    print(f"Points: {player['points']}\n")
+
