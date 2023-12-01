@@ -16,25 +16,30 @@ def main():
     is_running = True
 
     while is_running:
+        
         board = board_history[-1]
         engine.put_player_on_board(board, player)
         ui.display_health_and_points(player)
         ui.display_inventory(player)
-        ui.display_board(board)
+        ui.display_board(board, player)
         if player["life"] <= 0:
             print("You lost")
-            #is_running = False
             break
-        button = input("Move the player (W - up, S - down, A - left, D - right, Q - quit): ").upper()
-        # button = util.key_pressed().upper()
+        #button = input("Move the player (W - up, S - down, A - left, D - right, Q - quit): ").upper()
+        button = util.key_pressed().upper()
         if button == 'Q':
             print("Goodbye")
             is_running = False
         else:
             engine.move_player(board, player, button)
+            engine.move_monsters(board)
 
         util.clear_screen()
 
 
 if __name__ == '__main__':
     main()
+
+
+
+
