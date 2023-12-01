@@ -92,6 +92,28 @@ elements = {
             "amount": 15
         }
     },
+    "Treasure": {
+        "symbol": "💰",
+        "type": "Reward",
+        "passable": True,
+        "effect": {
+            "type": "add_to_inventory",
+            "bonus": {
+                "Gold": 10
+            }
+        }
+    },
+    "Thief": {
+        "symbol": "👤",
+        "type": "Enemy",
+        "passable": True,
+        "effect": {
+            "type": "add_to_inventory",
+            "bonus": {
+                "Gold": -10
+            }
+        }
+    }
 }
 
 
@@ -110,7 +132,7 @@ def placing_teleports(height, width, board):
 def placing_elements(height, width, obstacles, board):
     total_cells = height * width
     max_elements = total_cells * obstacles
-    elements_to_place = [element for element in elements if element not in ["Door"]]
+    elements_to_place = [element for element in elements if element not in ["Door","Wall"]]
     placed_elements = 0
 
     while placed_elements < max_elements:
@@ -209,16 +231,19 @@ def add_points(player, points_to_add):
 
 
 def move_monsters(board):
-    monster_symbol = elements["Monster1"]["symbol"]
+    monster_symbols = [
+        elements["Monster1"]["symbol"],
+        elements["Thief"]["symbol"]
+    ]
 
     for row_idx, row in enumerate(board):
         for col_idx, cell in enumerate(row):
-            if cell == monster_symbol:
+            if cell in monster_symbols:
                 possible_moves = [
-                    (row_idx - 1, col_idx),  
-                    (row_idx + 1, col_idx),  
-                    (row_idx, col_idx - 1),  
-                    (row_idx, col_idx + 1),  
+                    (row_idx - 1, col_idx),
+                    (row_idx + 1, col_idx),
+                    (row_idx, col_idx - 1),
+                    (row_idx, col_idx + 1),
                 ]
 
                 valid_moves = [
@@ -228,12 +253,15 @@ def move_monsters(board):
 
                 if valid_moves:
                     new_row, new_col = random.choice(valid_moves)
+                    current_symbol = board[row_idx][col_idx]
                     board[row_idx][col_idx] = elements["Grass"]["symbol"]
-                    board[new_row][new_col] = monster_symbol
+                    board[new_row][new_col] = current_symbol
+    return board
+
 
 
 def fight_with_monster(player, effect):
-    print("You encountered a monster!")
+   
     if effect['type'] == "fight_with_monster":
         monster_life = effect.get('life')
         bonus = effect.get('bonus')
@@ -276,8 +304,8 @@ def apply_player_effect(player, cell_effect):
                 add_random_bonus(player)
             else:
                 print("Unknown effect")
-    else:
-        print("No effect on this terrain")
+    # else:
+    #     print("No effect on this terrain")
 
 
 def move_direction(direction, row, col):
@@ -318,7 +346,6 @@ def move_player(board, player, direction):
 
             if "effect" in elements[current_cell]:
                 cell_effect = elements[current_cell].get('effect')
-                #print(cell_effect)
                 apply_player_effect(player, cell_effect)
 
     return board
