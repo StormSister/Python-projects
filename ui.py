@@ -10,7 +10,7 @@ def display_inventory(player):
     if not player["inventory"]:
         print("Inventory is empty.")
     else:
-        print("ITEM QUANTITY")
+        #print("ITEM QUANTITY")
         for item, quantity in player["inventory"].items():
             print(f"{item}: {quantity}")
 

@@ -347,10 +347,14 @@ def move_player(board, player, direction):
             player["row"], player["col"] = new_row, new_col
             board[row][col] = elements["Grass"]["symbol"]
             board[player["row"]][player["col"]] = player['symbol']
+            if player["life"] < 100:
+                    player["life"] += 1
 
             if "effect" in elements[current_cell]:
                 cell_effect = elements[current_cell].get('effect')
                 apply_player_effect(player, cell_effect)
+                
+    
 
     return board
 
