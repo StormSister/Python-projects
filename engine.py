@@ -202,8 +202,12 @@ def add_to_inventory(player, bonus):
     for item, quantity in bonus.items():
         if item in player['inventory']:
             player['inventory'][item] += quantity
+            if player['inventory'][item] <= 0:
+                player['inventory'][item] = 0
         else:
             player['inventory'][item] = quantity
+            if player['inventory'][item] <= 0:
+                player['inventory'][item] = 0
     print("Added bonus to inventory:", bonus)
 
 
